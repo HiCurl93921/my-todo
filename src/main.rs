@@ -112,20 +112,4 @@ mod test {
 
         assert_eq!(expected, todo);
     }
-
-    #[tokio::test]
-    async fn should_return_hello_world() {
-        let repository = TodoRepositoryForMemory::new();
-
-        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
-
-        // onshotメソッドで一回だけレスポンスを生成する
-        let res = create_app(repository).oneshot(req).await.unwrap();
-
-        let bytes = hyper::body::to_bytes(res.into_body()).await.unwrap();
-
-        let body: String = String::from_utf8(bytes.to_vec()).unwrap();
-
-        assert_eq!(body, "Hello, World!");
-    }
 }
