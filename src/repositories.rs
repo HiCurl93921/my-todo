@@ -13,13 +13,11 @@ enum RepositoryError {
     NotFound(i32),
 }
 
-pub trait TodoRepository: Clone + std::marker::Send +
-std::marker::Sync + 'static {
+pub trait TodoRepository: Clone + std::marker::Send + std::marker::Sync + 'static {
     fn create(&self, payload: CreateTodo) -> Todo;
     fn find(&self, id: i32) -> Option<Todo>;
     fn all(&self) -> Vec<Todo>;
-    fn update(&self, id: i32, payload: UpdateTodo) ->
-    anyhow::Result<Todo>;
+    fn update(&self, id: i32, payload: UpdateTodo) -> anyhow::Result<Todo>;
     fn delete(&self, id: i32) -> anyhow::Result<()>;
 }
 
@@ -103,16 +101,14 @@ impl TodoRepository for TodoRepositoryForMemory {
 
     fn update(&self, id: i32, payload: UpdateTodo) -> anyhow::Result<Todo> {
         let mut store = self.write_store_ref();
-        let todo = store
-            .get(&id)
-            .context(RepositoryError::NotFound(id))?;
+        let todo = store.get(&id).context(RepositoryError::NotFound(id))?;
         let text = payload.text.unwrap_or(todo.text.clone());
         let completed = payload.completed.unwrap_or(todo.completed);
 
         let todo = Todo {
             id,
             text,
-            completed
+            completed,
         };
         store.insert(id, todo.clone());
         Ok(todo)
@@ -143,7 +139,7 @@ mod test {
         // find
         let todo = repository.find(todo.id).unwrap();
         assert_eq!(expected, todo);
-        
+
         // all
         let todo = repository.all();
         assert_eq!(vec![expected], todo);
@@ -151,14 +147,17 @@ mod test {
         //update
         let text = "update todo text".to_string();
         let todo = repository
-            .update(1, UpdateTodo { 
-                text: Some(text.clone()), 
-                completed: Some(true) 
-            },
-        ).expect("failed update todo.");
+            .update(
+                1,
+                UpdateTodo {
+                    text: Some(text.clone()),
+                    completed: Some(true),
+                },
+            )
+            .expect("failed update todo.");
 
         assert_eq!(
-            Todo{
+            Todo {
                 id,
                 text,
                 completed: true,
