@@ -154,7 +154,7 @@ impl TodoRepository for TodoRepositoryForDb {
         todo!()
     }
 
-    async fn all(&self) -> anyhow::Result<Todo> {
+    async fn all(&self) -> anyhow::Result<Vec<Todo>> {
         todo!()
     }
 
