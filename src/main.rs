@@ -11,8 +11,8 @@ use handlers::{all_todo, create_todo, delete_todo, find_todo, update_todo};
 use std::net::SocketAddr;
 use std::{env, sync::Arc};
 
-use sqlx::PgPool;
 use dotenv::dotenv;
+use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() {
@@ -25,15 +25,14 @@ async fn main() {
 
     dotenv().ok();
 
-    let database_url = &env::var("DATABESE_URL")
-        .expect("undefined [DATABESEURL]");
+    let database_url = &env::var("DATABESE_URL").expect("undefined [DATABESEURL]");
 
     tracing::debug!("start connect database...");
-    
+
     let pool = PgPool::connect(&database_url)
         .await
         .expect(&format!("fail connect database, url is [{}]", database_url));
-    
+
     let repository = TodoRepositoryForDb::new(pool.clone());
     let app = create_app(repository);
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -66,7 +65,7 @@ async fn root() -> &'static str {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::repositories::{CreateTodo, Todo, TodoRepositoryForMemory};
+    use crate::repositories::{test_utils::TodoRepositoryForMemory, CreateTodo, Todo};
     use axum::response::Response;
     use axum::{
         body::Body,
@@ -127,9 +126,9 @@ mod test {
 
         let repository = TodoRepositoryForMemory::new();
         repository
-        .create(CreateTodo::new("should_find_todo".to_string()))
-        .await
-        .expect("failed create todo");
+            .create(CreateTodo::new("should_find_todo".to_string()))
+            .await
+            .expect("failed create todo");
 
         let req = build_todo_req_with_empty(Method::GET, "/todos/1");
 

@@ -53,20 +53,14 @@ pub async fn find_todo<T: TodoRepository>(
     Path(id): Path<i32>,
     Extension(repository): Extension<Arc<T>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let todo = repository
-        .find(id)
-        .await
-        .or(Err(StatusCode::NOT_FOUND))?;
+    let todo = repository.find(id).await.or(Err(StatusCode::NOT_FOUND))?;
     Ok((StatusCode::OK, Json(todo)))
 }
 
 pub async fn all_todo<T: TodoRepository>(
     Extension(repository): Extension<Arc<T>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let todo = repository
-        .all()
-        .await
-        .unwrap();
+    let todo = repository.all().await.unwrap();
     Ok((StatusCode::OK, Json(todo)))
 }
 
