@@ -25,7 +25,7 @@ async fn main() {
 
     dotenv().ok();
 
-    let database_url = &env::var("DATABESE_URL").expect("undefined [DATABESEURL]");
+    let database_url = &env::var("DATABASE_URL").expect("undefined [DATABASEURL]");
 
     tracing::debug!("start connect database...");
 

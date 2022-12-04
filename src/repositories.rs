@@ -1,11 +1,13 @@
 use axum::async_trait;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use thiserror::Error;
 use validator::Validate;
 
 #[derive(Debug, Error)]
 enum RepositoryError {
+    #[error("Unexpected Error: [{0}]")]
+    Unexpected(String),
     #[error("NotFound, id is {0}")]
     NotFound(i32),
 }
@@ -20,7 +22,7 @@ pub trait TodoRepository: Clone + std::marker::Send + std::marker::Sync + 'stati
 }
 
 // ** point 3**
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, FromRow)]
 pub struct Todo {
     id: i32,
     text: String,
@@ -55,24 +57,158 @@ impl TodoRepositoryForDb {
 
 #[async_trait]
 impl TodoRepository for TodoRepositoryForDb {
-    async fn create(&self, _payload: CreateTodo) -> anyhow::Result<Todo> {
-        todo!()
+    async fn create(&self, payload: CreateTodo) -> anyhow::Result<Todo> {
+        let todo = sqlx::query_as::<_, Todo>(
+            r#"
+            insert into todos (text, completed)
+            values ($1, false)
+            returning *
+            "#,
+        ).bind(payload.text.clone())
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(todo)
     }
 
-    async fn find(&self, _id: i32) -> anyhow::Result<Todo> {
-        todo!()
+    async fn find(&self, id: i32) -> anyhow::Result<Todo> {
+        let todo = sqlx::query_as::<_, Todo>(
+            r#"
+            select * from todos where id=$1
+            "#
+        )
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| match e {
+             sqlx::Error::RowNotFound => RepositoryError::NotFound(id),
+            _ => RepositoryError::Unexpected(e.to_string()),
+        })?;
+
+        Ok(todo)
     }
 
     async fn all(&self) -> anyhow::Result<Vec<Todo>> {
-        todo!()
+        let todos = sqlx::query_as::<_, Todo>(
+            r#"
+            select * from todos
+            order by id desc;
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        
+        Ok(todos)
     }
 
-    async fn update(&self, _id: i32, _payload: UpdateTodo) -> anyhow::Result<Todo> {
-        todo!()
+    async fn update(&self, id: i32, payload: UpdateTodo) -> anyhow::Result<Todo> {
+        let old_todo = self.find(id).await?;
+        let todo = sqlx::query_as::<_, Todo>(
+            r#"
+            update todos set text=$1, completed=$2
+            where id=$3
+            returning *
+            "#,
+        )
+        .bind(payload.text.unwrap_or(old_todo.text))
+        .bind(payload.completed.unwrap_or(old_todo.completed))
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(todo)
     }
 
-    async fn delete(&self, _id: i32) -> anyhow::Result<()> {
-        todo!()
+    async fn delete(&self, id: i32) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"
+            delete from todos where id=$1
+            "#
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => RepositoryError::NotFound(id),
+            _ => RepositoryError::Unexpected(e.to_string()),
+        })?;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use dotenv::dotenv;
+    use sqlx::PgPool;
+    use std::env;
+
+    #[tokio::test]
+    async fn crud_scenario() {
+        dotenv().ok();
+        let database_url = &env::var("DATABASE_URL")
+            .expect("undefined [DATABASE_URL]");
+
+        let pool = PgPool::connect(&database_url)
+            .await
+            .expect(&format!("fail connect database, url is [{}]", database_url));
+
+        let repository = TodoRepositoryForDb::new(pool.clone());
+        let todo_text = "[crud_scenario] text";
+
+        // create
+        let created = repository
+            .create(CreateTodo::new(todo_text.to_string()))
+            .await
+            .expect("[create] returned Err");
+
+        assert_eq!(created.text, todo_text);
+        assert!(!created.completed);
+
+        // find
+        let todo = repository
+            .find(created.id)
+            .await
+            .expect("[find] returnd Err");
+        assert_eq!(created, todo);
+
+        // all
+        let todos = repository.all().await.expect("[all] retuned Err");
+        let todo = todos.first().unwrap();
+        assert_eq!(created, *todo);
+
+        // update
+        let updated_text = "[crud scenario] update text";
+        let todo = repository
+            .update(
+                todo.id,
+                UpdateTodo { 
+                    text: Some(updated_text.to_string()), completed: Some(true), 
+                },
+            )
+            .await
+            .expect("[update] return Err");
+        assert_eq!(created.id, todo.id);
+        assert_eq!(todo.text, updated_text);
+
+        let _ = repository
+            .delete(todo.id)
+            .await
+            .expect("[delete] returned Err");
+        let res = repository.find(created.id).await;
+        assert!(res.is_err());
+
+        let todo_rows = sqlx::query(
+            r#"
+            select * from todos where id=$1  
+            "#,
+        )
+        .bind(todo.id)
+        .fetch_all(&pool)
+        .await
+        .expect("[delete] todo_labels fetch error");
+        assert!(todo_rows.len() == 0);
     }
 }
 
