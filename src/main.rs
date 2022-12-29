@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use crate::repositories::{TodoRepository, TodoRepositoryForDb};
+use create ::repositories::todo::{TodoRepository, TodoRepositoryForDb};
 use dotenv::dotenv;
 use handlers::{all_todo, create_todo, delete_todo, find_todo, update_todo};
 use hyper::header::CONTENT_TYPE;
@@ -72,7 +72,7 @@ async fn root() -> &'static str {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::repositories::{test_utils::TodoRepositoryForMemory, CreateTodo, Todo};
+    use crate::repositories::todo::{test_utils::TodoRepositoryForMemory, CreateTodo, Todo};
     use axum::response::Response;
     use axum::{
         body::Body,
