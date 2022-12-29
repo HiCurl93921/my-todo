@@ -196,4 +196,34 @@ pub mod test_utils {
             Ok(())
         }
     }
+
+    mod test {
+        use super::*;
+    
+        #[tokio::test]
+        async fn label_crud_scenario() {
+            let name = "label name".to_string();
+            let id = 1;
+            let expected = Label::new(id, name.clone());
+
+            let repository 
+                = LabelRepositoryForMemory::new();
+            let label = repository
+                .create(name.clone())
+                .await
+                .expect("failed create label");
+            assert_eq!(expected, label);
+
+            let label = repository
+                .all()
+                .await
+                .expect("failed get all label");
+            assert_eq!(vec![expected], label);
+
+            let res = repository
+                .delete(id)
+                .await;
+            assert!(res.is_ok())
+        }
+    }
 }
