@@ -6,9 +6,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use create ::repositories::todo::{TodoRepository, TodoRepositoryForDb};
+use crate::repositories::todo::{TodoRepository, TodoRepositoryForDb};
 use dotenv::dotenv;
-use handlers::{all_todo, create_todo, delete_todo, find_todo, update_todo};
+use handlers::todo::{all_todo, create_todo, delete_todo, find_todo, update_todo};
 use hyper::header::CONTENT_TYPE;
 use sqlx::PgPool;
 use std::net::SocketAddr;
