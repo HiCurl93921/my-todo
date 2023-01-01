@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Path,},
+    extract::{Extension, Path},
     http::StatusCode,
     response::IntoResponse,
     Json,

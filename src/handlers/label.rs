@@ -1,7 +1,7 @@
 use axum::{
     extract::{Extension, Path},
-    response::IntoResponse,
     http::StatusCode,
+    response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -28,11 +28,8 @@ pub async fn create_label<T: LabelRepository>(
 pub async fn all_label<T: LabelRepository>(
     Extension(repository): Extension<Arc<T>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let labels = repository
-        .all()
-        .await
-        .unwrap();
-        Ok((StatusCode::OK, Json(labels)))
+    let labels = repository.all().await.unwrap();
+    Ok((StatusCode::OK, Json(labels)))
 }
 
 pub async fn delete_label<T: LabelRepository>(
